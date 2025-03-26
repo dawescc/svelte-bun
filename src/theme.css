@@ -1,0 +1,63 @@
+@layer base {
+	:root {
+		font-family: 'Geist Mono Variable', monospace;
+
+		/* Border Radius */
+		--border-radius: 0.6423466667em;
+
+		/* Font Size */
+		--font-size: 15px;
+
+		/* Spacing */
+		--spacing: 0.25rem;
+
+		--gray-1: rgb(250, 250, 250);
+		--gray-5: rgb(222, 222, 222);
+		--gray-12: rgb(0, 0, 0);
+
+		@variant dark {
+			--gray-1: rgb(0, 0, 0);
+			--gray-5: rgb(100, 100, 100);
+			--gray-12: rgb(250, 250, 250);
+		}
+	}
+}
+
+@theme inline {
+	/* Color Test */
+	--color-gray-1: var(--gray-1);
+	--color-gray-5: var(--gray-5);
+	--color-gray-12: var(--gray-12);
+
+	/* Border Radius */
+	--radius: var(--border-radius);
+
+	/* Spacing */
+	--spacing: var(--spacing);
+
+	/* Fonts */
+	--font-sans: var(--font-sans-custom);
+	--font-serif: var(--font-serif-custom);
+	--font-display: var(--font-display-custom);
+	--font-mono: var(--font-mono-custom);
+}
+
+@layer base {
+	body {
+		@apply bg-gray-1 text-gray-12;
+	}
+
+	html {
+		font-size: var(--font-size);
+	}
+}
+
+@layer base {
+	*,
+	::after,
+	::before,
+	::backdrop,
+	::file-selector-button {
+		border-color: var(--color-gray-5, currentColor);
+	}
+}
