@@ -10,9 +10,17 @@
 	let offset = 0;
 	const limit = 20;
 
+	const imageCache = new Map<string, Promise<string | null>>();
+
+	function getImageUrl(pokemonName: string) {
+		if (!imageCache.has(pokemonName)) {
+			imageCache.set(pokemonName, getPokemonImageUrl(pokemonName));
+		}
+		return imageCache.get(pokemonName)!;
+	}
+
 	async function loadPokemon() {
-		// Remove the isLoading check since we handle loading state properly now
-		if (hasError) return;
+		if (hasError || isLoading) return;
 
 		isLoading = true;
 		try {
@@ -27,28 +35,24 @@
 		}
 	}
 
+	function handleScroll() {
+		const scrollPosition = window.scrollY + window.innerHeight;
+		const totalHeight = document.documentElement.scrollHeight;
+		const scrollPercentage = (scrollPosition / totalHeight) * 100;
+
+		if (scrollPercentage > 77 && !isLoading) {
+			loadPokemon();
+		}
+	}
+
 	onMount(async (): Promise<any> => {
 		await loadPokemon();
-
-		const observer = new IntersectionObserver(
-			(entries) => {
-				if (entries[0].isIntersecting && !isLoading) {
-					loadPokemon();
-				}
-			},
-			{ threshold: 0.1 }
-		);
-
-		if (loadMoreRef) {
-			observer.observe(loadMoreRef);
-		}
+		window.addEventListener('scroll', handleScroll);
 
 		return () => {
-			observer.disconnect();
+			window.removeEventListener('scroll', handleScroll);
 		};
 	});
-
-	let loadMoreRef: HTMLDivElement;
 </script>
 
 <div class="container mx-auto mt-8 px-2">
@@ -58,7 +62,7 @@
 		class="mb-10 size-[36px]"
 		style="image-rendering: pixelated;"
 	/>
-	<h1 class="mb-20 text-[36px]/[42px] font-bold">built with svelte 5</h1>
+	<h1 class="text-title-large mb-20 font-bold">built with svelte 5</h1>
 
 	{#if isLoading && offset === 0}
 		<p>Loading...</p>
@@ -66,42 +70,52 @@
 		<p>Error loading Pokemon.</p>
 	{:else}
 		<div
-			class="*:hover:bg-blacka-1 grid grid-cols-2 divide-x divide-y border-t border-l sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
+			class="*:hover:bg-blacka-1 grid grid-cols-2 border-t border-l *:border-r *:border-b sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
 		>
 			{#each pokemonList as pokemon, index (pokemon.name)}
 				<div
 					transition:fly={{ y: 50, duration: 500, delay: (index % 4) * 50 }}
 					class="group/card p-4 transition-all duration-[333ms] ease-in-out"
 				>
-					<div>
-						{#await getPokemonImageUrl(pokemon.name) then imageUrl}
+					<div class="aspect-square">
+						{#await getImageUrl(pokemon.name)}
+							<div class="flex h-full w-full items-center justify-center">
+								<img
+									src={`https://avatar.vercel.sh/${pokemon.name}?rounded=200`}
+									alt={pokemon.name}
+									style="image-rendering: pixelated;"
+									class="size-32 animate-pulse rounded-full opacity-25 blur-2xl"
+								/>
+							</div>
+						{:then imageUrl}
 							{#if imageUrl}
-								<div class="relative">
+								<div class="relative h-full">
 									<img
 										src={imageUrl}
 										alt={pokemon.name}
-										class="w-full group-hover/card:animate-bounce"
+										class="h-full w-full object-contain group-hover/card:animate-pulse"
 										style="image-rendering: pixelated;"
 									/>
 									<div
-										class="absolute inset-0 z-[-1] size-full translate-y-[35%] scale-y-[10%] rounded-full bg-gray-100 dark:bg-[rgb(25,25,25)]"
+										class="bg-gray-3 absolute inset-0 z-[-1] size-full translate-y-[35%] scale-y-[10%] rounded-full"
 									></div>
 								</div>
 							{:else}
-								<p>No image</p>
+								<p class="flex h-full items-center justify-center">No image</p>
 							{/if}
 						{:catch error}
-							<p>Error loading image</p>
+							<p class="flex h-full items-center justify-center">Error loading image</p>
 						{/await}
-						<p class="text-title-1 text-center font-medium capitalize">{pokemon.name}</p>
+						<p class="text-title-1 mt-2 text-center font-medium capitalize">{pokemon.name}</p>
 					</div>
 				</div>
 			{/each}
 		</div>
-		<div bind:this={loadMoreRef} class="py-4 text-center">
-			{#if isLoading}
+
+		{#if isLoading}
+			<div class="py-4 text-center">
 				<p>Loading more...</p>
-			{/if}
-		</div>
+			</div>
+		{/if}
 	{/if}
 </div>
