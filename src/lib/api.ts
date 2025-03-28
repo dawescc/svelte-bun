@@ -1,60 +1,57 @@
-import { z } from 'zod';
+import { pokemonDataSchema, pokemonListResponseSchema } from '$lib/schemas';
+import type { PokemonData } from '$lib/types';
 
-const pokemonSchema = z.object({
-	name: z.string(),
-	url: z.string()
-});
-
-const pokemonListResponseSchema = z.object({
-	count: z.number(),
-	next: z.string().nullable(),
-	previous: z.string().nullable(),
-	results: z.array(pokemonSchema)
-});
-
-const fetchPokemon = async (url: string) => {
-	const response = await fetch(url);
-
-	if (!response.ok) {
-		throw new Error(`HTTP error! Status: ${response.status}`);
-	}
-
-	const data = await response.json();
-	const validatedData = pokemonListResponseSchema.parse(data);
-	return validatedData;
-};
+const API_BASE_URL = 'https://pokeapi.co/api/v2';
 
 export async function getPokemonList(limit: number = 20, offset: number = 0) {
-	const baseUrl = 'https://pokeapi.co/api/v2/pokemon';
-	const url = `${baseUrl}?limit=${limit}&offset=${offset}`;
+	const url = `${API_BASE_URL}/pokemon?limit=${limit}&offset=${offset}`;
 
 	try {
-		return await fetchPokemon(url);
+		const response = await fetch(url);
+		if (!response.ok) {
+			throw new Error(`HTTP error! Status: ${response.status}`);
+		}
+
+		const data = await response.json();
+		return pokemonListResponseSchema.parse(data);
 	} catch (error) {
-		console.error('Failed to fetch Pokemon:', error);
+		console.error('Failed to fetch Pokemon list:', error);
 		throw error;
 	}
 }
 
-const pokemonDataSchema = z.object({
-	id: z.number(),
-	sprites: z.object({
-		front_default: z.string().nullable()
-	})
-});
-
-export const getPokemonImageUrl = async (pokemonName: string): Promise<string | null> => {
+export async function getPokemonImageUrl(pokemonName: string): Promise<string | null> {
 	try {
-		const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemonName}`);
+		const response = await fetch(`${API_BASE_URL}/pokemon/${pokemonName}`);
 		if (!response.ok) {
 			console.error(`Failed to fetch details for ${pokemonName}: ${response.status}`);
 			return null;
 		}
+
 		const data = await response.json();
 		const validatedData = pokemonDataSchema.parse(data);
-		return validatedData.sprites.front_default;
+		return (
+			validatedData.sprites.other?.home?.front_default ||
+			validatedData.sprites.other?.['official-artwork']?.front_default ||
+			validatedData.sprites.front_default
+		);
 	} catch (error) {
 		console.error('Failed to fetch Pokemon data:', error);
 		return null;
 	}
-};
+}
+
+export async function getPokemonDetails(pokemonName: string): Promise<PokemonData> {
+	try {
+		const response = await fetch(`${API_BASE_URL}/pokemon/${pokemonName}`);
+		if (!response.ok) {
+			throw new Error(`Failed to fetch details for ${pokemonName}: ${response.status}`);
+		}
+
+		const data = await response.json();
+		return pokemonDataSchema.parse(data);
+	} catch (error) {
+		console.error('Failed to fetch Pokemon details:', error);
+		throw error;
+	}
+}

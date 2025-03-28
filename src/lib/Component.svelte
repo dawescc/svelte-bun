@@ -1,23 +1,17 @@
 <script lang="ts">
-	import { getPokemonList, getPokemonImageUrl } from '$lib/api';
-	import type { Pokemon } from '$lib/types';
 	import { onMount } from 'svelte';
-	import { fly } from 'svelte/transition';
+	import { fade, fly } from 'svelte/transition';
+	import PokemonCard from '$lib/components/PokemonCard.svelte';
+	import PokemonDetailCard from '$lib/components/PokemonDetailCard.svelte';
+	import { getPokemonList } from '$lib/api';
+	import type { Pokemon } from '$lib/types';
 
 	let pokemonList: Pokemon[] = [];
 	let isLoading = false;
 	let hasError = false;
 	let offset = 0;
+	let selectedPokemon: string | null = null;
 	const limit = 20;
-
-	const imageCache = new Map<string, Promise<string | null>>();
-
-	function getImageUrl(pokemonName: string) {
-		if (!imageCache.has(pokemonName)) {
-			imageCache.set(pokemonName, getPokemonImageUrl(pokemonName));
-		}
-		return imageCache.get(pokemonName)!;
-	}
 
 	async function loadPokemon() {
 		if (hasError || isLoading) return;
@@ -36,6 +30,8 @@
 	}
 
 	function handleScroll() {
+		if (selectedPokemon) return; // Don't load more when modal is open
+
 		const scrollPosition = window.scrollY + window.innerHeight;
 		const totalHeight = document.documentElement.scrollHeight;
 		const scrollPercentage = (scrollPosition / totalHeight) * 100;
@@ -53,68 +49,54 @@
 			window.removeEventListener('scroll', handleScroll);
 		};
 	});
+
+	function handleSelectPokemon(name: string) {
+		selectedPokemon = name;
+	}
 </script>
 
-<div class="container mx-auto mt-8 px-2">
-	<img
-		src={'/favicon.png'}
-		alt={'Eleanes Logo'}
-		class="mb-10 size-[36px]"
-		style="image-rendering: pixelated;"
-	/>
+<div class="container mx-auto mt-8 px-4 pb-20">
+	<div class="mb-10 flex items-center">
+		<img
+			src="/favicon.png"
+			alt="Eleanes Logo"
+			class="mr-4 size-[36px]"
+			style="image-rendering: pixelated;"
+		/>
+	</div>
+
 	<h1 class="text-title-large mb-20 font-bold">built with svelte 5</h1>
 
 	{#if isLoading && offset === 0}
-		<p>Loading...</p>
+		<div class="flex justify-center">
+			<div
+				class="border-blacka-9 dark:border-whitea-9 h-12 w-12 animate-spin rounded-full border-t-2 border-b-2"
+			></div>
+		</div>
 	{:else if hasError}
-		<p>Error loading Pokemon.</p>
+		<div class="bg-red-3 text-red-11 rounded-md p-4">
+			Error loading Pokemon. Please try again later.
+		</div>
 	{:else}
+		{#if selectedPokemon}
+			<PokemonDetailCard pokemonName={selectedPokemon} onClose={() => (selectedPokemon = null)} />
+		{/if}
+
 		<div
-			class="*:hover:bg-blacka-1 grid grid-cols-2 border-t border-l *:border-r *:border-b sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
+			class="grid grid-cols-2 border-t border-l *:border-r *:border-b sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
 		>
 			{#each pokemonList as pokemon, index (pokemon.name)}
-				<div
-					transition:fly={{ y: 50, duration: 500, delay: (index % 4) * 50 }}
-					class="group/card p-4 transition-all duration-[333ms] ease-in-out"
-				>
-					<div class="aspect-square">
-						{#await getImageUrl(pokemon.name)}
-							<div class="flex h-full w-full items-center justify-center">
-								<img
-									src={`https://avatar.vercel.sh/${pokemon.name}?rounded=200`}
-									alt={pokemon.name}
-									style="image-rendering: pixelated;"
-									class="size-32 animate-pulse rounded-full opacity-25 blur-2xl"
-								/>
-							</div>
-						{:then imageUrl}
-							{#if imageUrl}
-								<div class="relative h-full">
-									<img
-										src={imageUrl}
-										alt={pokemon.name}
-										class="h-full w-full object-contain group-hover/card:animate-pulse"
-										style="image-rendering: pixelated;"
-									/>
-									<div
-										class="bg-gray-3 absolute inset-0 z-[-1] size-full translate-y-[35%] scale-y-[10%] rounded-full"
-									></div>
-								</div>
-							{:else}
-								<p class="flex h-full items-center justify-center">No image</p>
-							{/if}
-						{:catch error}
-							<p class="flex h-full items-center justify-center">Error loading image</p>
-						{/await}
-						<p class="text-title-1 mt-2 text-center font-medium capitalize">{pokemon.name}</p>
-					</div>
+				<div in:fly={{ y: 50, duration: 150, delay: (index % 5) * 50 }}>
+					<PokemonCard {pokemon} onClick={() => handleSelectPokemon(pokemon.name)} />
 				</div>
 			{/each}
 		</div>
 
 		{#if isLoading}
 			<div class="py-4 text-center">
-				<p>Loading more...</p>
+				<div
+					class="border-blacka-9 dark:border-whitea-9 inline-block h-8 w-8 animate-spin rounded-full border-t-2 border-b-2"
+				></div>
 			</div>
 		{/if}
 	{/if}
